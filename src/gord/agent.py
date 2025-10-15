@@ -1,5 +1,5 @@
 
-from typing import List
+from typing import List, Optional
 
 from langchain_core.messages import AIMessage
 
@@ -8,12 +8,17 @@ from gord.prompts import (
     ANSWER_SYSTEM_PROMPT,
     PLANNING_SYSTEM_PROMPT,
     VALIDATION_SYSTEM_PROMPT,
+    ROUTER_SYSTEM_PROMPT,
+    PLANNING_SYSTEM_PROMPT_BUSINESS,
+    PLANNING_SYSTEM_PROMPT_UNDERWRITING,
+    BUSINESS_ANSWER_SYSTEM_PROMPT,
+    UNDERWRITING_REPORT_PROMPT,
 )
 
 from gord.model import call_llm
 from gord.utils.logger import Logger
 from gord.utils.ui import show_progress
-from gord.schemas import Answer, IsDone, Task, TaskList
+from gord.schemas import Answer, IsDone, Task, TaskList, RouteDecision, Intent
 from gord.tools import TOOLS
 
 
@@ -22,18 +27,44 @@ class Agent:
         self.logger = Logger()
         self.max_steps = max_steps            # global safety cap
         self.max_steps_per_task = max_steps_per_task
+        self.route_decision: Optional[RouteDecision] = None
+
+    # ---------- routing ----------
+    @show_progress("Routing...", "Routed")
+    def route(self, query: str) -> RouteDecision:
+        prompt = f"Classify this query and extract address if applicable: {query}"
+        try:
+            decision = call_llm(prompt, system_prompt=ROUTER_SYSTEM_PROMPT, output_schema=RouteDecision)
+            return decision
+        except Exception as e:
+            self.logger._log(f"Routing failed: {e}")
+            return RouteDecision(intent=Intent.GENERAL_QA, address=None, rationale="Fallback after error.")
 
     # ---------- task planning ----------
     @show_progress("Planning tasks...", "Tasks planned")
     def plan_tasks(self, query: str) -> List[Task]:
         tool_descriptions = "\n".join([f"- {t.name}: {t.description}" for t in TOOLS])
+        # Incorporate routing decision context
+        intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
+        addr = self.route_decision.address if self.route_decision else None
         prompt = f"""
-        Given the user query: "{query}",
+        User query: "{query}"
+        Intent: {intent}
+        Address: {addr or 'N/A'}
+        
+        Tools available:
+        {tool_descriptions}
+
         Create a list of tasks to be completed.
         Example: {{"tasks": [{{"id": 1, "description": "some task", "done": false}}]}}
         """
-        system_prompt = PLANNING_SYSTEM_PROMPT.format(tools=tool_descriptions)
-        print(system_prompt)
+        # Choose planning system prompt by intent
+        if intent == Intent.UNDERWRITING_REPORT:
+            system_prompt = PLANNING_SYSTEM_PROMPT_UNDERWRITING
+        elif intent == Intent.BUSINESS_PROFILE:
+            system_prompt = PLANNING_SYSTEM_PROMPT_BUSINESS
+        else:
+            system_prompt = PLANNING_SYSTEM_PROMPT
         try:
             response = call_llm(prompt, system_prompt=system_prompt, output_schema=TaskList)
             tasks = response.tasks
@@ -49,8 +80,12 @@ class Agent:
     @show_progress("Thinking...", "")
     def ask_for_actions(self, task_desc: str, last_outputs: str = "") -> AIMessage:
         # last_outputs = textual feedback of what we just tried
+        intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
+        address = self.route_decision.address if self.route_decision else None
         prompt = f"""
         We are working on: "{task_desc}".
+        Intent: {intent}
+        Address: {address or 'N/A'}
         Here is a history of tool outputs from the session so far: {last_outputs}
 
         Based on the task and the outputs, what should be the next step?
@@ -97,6 +132,10 @@ class Agent:
         step_count = 0
         last_actions = []
         session_outputs = []  # accumulate outputs for the whole session
+
+        # Route first
+        self.route_decision = self.route(query)
+        self.logger._log(f"Routed intent: {self.route_decision.intent} | address: {self.route_decision.address or 'N/A'}")
 
         # Plan tasks
         tasks = self.plan_tasks(query)
@@ -180,14 +219,23 @@ class Agent:
     def _generate_answer(self, query: str, session_outputs: list) -> str:
         """Generate the final answer based on collected data."""
         all_results = "\n\n".join(session_outputs) if session_outputs else "No data was collected."
+        intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
+        address = self.route_decision.address if self.route_decision else None
         answer_prompt = f"""
         Original user query: "{query}"
-        
+        Intent: {intent}
+        Address: {address or 'N/A'}
+
         Data and results collected from tools:
         {all_results}
-        
-        Based on the data above, provide a comprehensive answer to the user's query.
-        Include specific numbers, calculations, and insights.
         """
-        answer_obj = call_llm(answer_prompt, system_prompt=ANSWER_SYSTEM_PROMPT, output_schema=Answer)
+        # Choose answer system prompt by intent
+        if intent == Intent.UNDERWRITING_REPORT:
+            system_prompt = UNDERWRITING_REPORT_PROMPT
+        elif intent == Intent.BUSINESS_PROFILE:
+            system_prompt = BUSINESS_ANSWER_SYSTEM_PROMPT
+        else:
+            system_prompt = ANSWER_SYSTEM_PROMPT
+
+        answer_obj = call_llm(answer_prompt, system_prompt=system_prompt, output_schema=Answer)
         return answer_obj.answer
