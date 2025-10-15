@@ -3,12 +3,12 @@ from typing import List
 
 from langchain_core.messages import AIMessage
 
-# from gord.prompts import (
-#     ACTION_SYSTEM_PROMPT,
-#     ANSWER_SYSTEM_PROMPT,
-#     PLANNING_SYSTEM_PROMPT,
-#     VALIDATION_SYSTEM_PROMPT,
-# )
+from gord.prompts import (
+    ACTION_SYSTEM_PROMPT,
+    ANSWER_SYSTEM_PROMPT,
+    PLANNING_SYSTEM_PROMPT,
+    VALIDATION_SYSTEM_PROMPT,
+)
 
 from gord.model import call_llm
 from gord.utils.logger import Logger
@@ -50,4 +50,30 @@ class Agent:
         last_actions = []
         session_outputs = []  # accumulate outputs for the whole session
 
+        # Plan tasks
+        tasks = self.plan_tasks(query)
+
+        # If no tasks were created, query is out of scope - answer directly
+        if not tasks:
+            answer = self._generate_answer(query, session_outputs)
+            self.logger.log_summary(answer)
+            return answer
+
         breakpoint()
+
+
+    @show_progress("Generating answer...", "Answer ready")
+    def _generate_answer(self, query: str, session_outputs: list) -> str:
+        """Generate the final answer based on collected data."""
+        all_results = "\n\n".join(session_outputs) if session_outputs else "No data was collected."
+        answer_prompt = f"""
+        Original user query: "{query}"
+        
+        Data and results collected from tools:
+        {all_results}
+        
+        Based on the data above, provide a comprehensive answer to the user's query.
+        Include specific numbers, calculations, and insights.
+        """
+        answer_obj = call_llm(answer_prompt, system_prompt=ANSWER_SYSTEM_PROMPT, output_schema=Answer)
+        return answer_obj.answer
