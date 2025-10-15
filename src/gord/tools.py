@@ -1,6 +1,6 @@
 from langchain.tools import tool
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 import requests
 import os
 import json
@@ -15,6 +15,12 @@ _LOGGER = Logger()
 
 BRAVE_SEARCH_URL = 'https://api.search.brave.com/res/v1/web/search'
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
+
+
+# Google Programmable Search Engine (PSE)
+GOOGLE_PSE_API_KEY = os.getenv("GOOGLE_PSE_API_KEY")
+GOOGLE_PSE_CX = os.getenv("GOOGLE_PSE_CX")
+GOOGLE_SEARCH_ENDPOINT = "https://www.googleapis.com/customsearch/v1"
 
 
 class BraveSearchInput(BaseModel):
@@ -74,9 +80,97 @@ def brave_search(
     if country:
         params["country"] = country
     
-    response = requests.get(BRAVE_SEARCH_URL, params=params, headers=headers)
+    response = requests.get(BRAVE_SEARCH_URL, params=params, headers=headers, timeout=30)
     response.raise_for_status()
     return response.json()
 
 
-TOOLS = [brave_search, ping_aoa_search]
+
+
+# -------------------- Google PSE Search --------------------
+class GoogleWebSearchInput(BaseModel):
+    q: str = Field(description="Web search query for Google Programmable Search Engine.")
+    count: Optional[int] = Field(default=10, description="Number of results to return (<= 50 recommended).")
+
+
+class GoogleImageSearchInput(BaseModel):
+    q: str = Field(description="Image search query for Google Programmable Search Engine.")
+    count: Optional[int] = Field(default=10, description="Number of image results to return (<= 50 recommended).")
+
+
+def _google_pse_search(query: str, count: int = 10, search_type: str = "web") -> List[dict]:
+    if not GOOGLE_PSE_API_KEY or not GOOGLE_PSE_CX:
+        raise RuntimeError("Missing GOOGLE_PSE_API_KEY or GOOGLE_PSE_CX env vars.")
+    results: List[dict] = []
+    start = 1
+    while len(results) < count:
+        num = min(10, count - len(results))
+        params = {
+            "key": GOOGLE_PSE_API_KEY,
+            "cx": GOOGLE_PSE_CX,
+            "q": query,
+            "num": num,
+            "start": start,
+        }
+        if search_type == "image":
+            params["searchType"] = "image"
+        r = requests.get(GOOGLE_SEARCH_ENDPOINT, params=params, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        items = data.get("items", [])
+        if not items:
+            break
+        for i in items:
+            entry = {
+                "title": i.get("title"),
+                "link": i.get("link"),
+                "snippet": i.get("snippet"),
+            }
+            if search_type == "image":
+                img = i.get("image", {}) or {}
+                entry["image_context_link"] = img.get("contextLink")
+                entry["thumbnail_link"] = img.get("thumbnailLink")
+            results.append(entry)
+        next_page = (data.get("queries", {}).get("nextPage") or [{}])[0].get("startIndex")
+        if not next_page:
+            break
+        start = next_page
+    return results[:count]
+
+
+@tool(args_schema=GoogleWebSearchInput)
+def google_web_search(q: str, count: int = 10) -> dict:
+    """
+    Google Programmable Search (web). Returns {"results": [{title, link, snippet}, ...]}.
+    Use for general web results; supports pagination up to 'count'.
+    """
+    try:
+        items = _google_pse_search(q, count=count, search_type="web")
+        _LOGGER._log(f"[google_web_search] q='{q}'\nResults: {json.dumps(items, indent=2)[:2000]}")
+        return {"results": items}
+    except Exception as e:
+        _LOGGER._log(f"[google_web_search] Error: {e}")
+        return {"error": str(e)}
+
+
+@tool(args_schema=GoogleImageSearchInput)
+def google_image_search(q: str, count: int = 10) -> dict:
+    """
+    Google Programmable Search (image). Returns {"results": [{title, link, snippet, image_context_link, thumbnail_link}, ...]}.
+    Use for image results with context and thumbnails; supports pagination up to 'count'.
+    """
+    try:
+        items = _google_pse_search(q, count=count, search_type="image")
+        _LOGGER._log(f"[google_image_search] q='{q}'\nResults: {json.dumps(items, indent=2)[:2000]}")
+        return {"results": items}
+    except Exception as e:
+        _LOGGER._log(f"[google_image_search] Error: {e}")
+        return {"error": str(e)}
+
+
+TOOLS = [
+    ping_aoa_search,
+    google_web_search,
+    google_image_search,
+    brave_search,            # kept for now
+]

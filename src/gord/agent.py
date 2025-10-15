@@ -13,6 +13,8 @@ from gord.prompts import (
     PLANNING_SYSTEM_PROMPT_BUSINESS,
     PLANNING_SYSTEM_PROMPT_UNDERWRITING,
     PLANNING_SYSTEM_PROMPT_PING_ONLY,
+    PLANNING_SYSTEM_PROMPT_UNDERWRITING_DEEP,
+    PLANNING_SYSTEM_PROMPT_BUSINESS_DEEP,
     BUSINESS_ANSWER_SYSTEM_PROMPT,
     UNDERWRITING_REPORT_PROMPT,
     PING_ONLY_ANSWER_SYSTEM_PROMPT,
@@ -23,6 +25,7 @@ from gord.utils.logger import Logger
 from gord.utils.ui import show_progress
 from gord.schemas import Answer, IsDone, Task, TaskList, RouteDecision, Intent
 from gord.tools import TOOLS
+from gord.settings import SEARCH_ENGINE
 
 
 class Agent:
@@ -31,10 +34,24 @@ class Agent:
         self.max_steps = max_steps            # global safety cap
         self.max_steps_per_task = max_steps_per_task
         self.route_decision: Optional[RouteDecision] = None
+        import threading
+        self._cancel_event = threading.Event()
+
+    # ---------- cancel control ----------
+    def request_cancel(self):
+        self._cancel_event.set()
+
+    def reset_cancel(self):
+        self._cancel_event.clear()
+
+    def _check_cancel(self):
+        if self._cancel_event.is_set():
+            raise KeyboardInterrupt()
 
     # ---------- routing ----------
     @show_progress("Routing...", "Routed")
     def route(self, query: str) -> RouteDecision:
+        self._check_cancel()
         prompt = f"Classify this query and extract address if applicable: {query}"
         try:
             decision = call_llm(prompt, system_prompt=ROUTER_SYSTEM_PROMPT, output_schema=RouteDecision)
@@ -46,7 +63,9 @@ class Agent:
     # ---------- task planning ----------
     @show_progress("Planning tasks...", "Tasks planned")
     def plan_tasks(self, query: str) -> List[Task]:
-        tool_descriptions = "\n".join([f"- {t.name}: {t.description}" for t in TOOLS])
+        self._check_cancel()
+        selected_tools = self._select_tools_for_intent()
+        tool_descriptions = "\n".join([f"- {t.name}: {t.description}" for t in selected_tools])
         # Incorporate routing decision context
         intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
         addr = self.route_decision.address if self.route_decision else None
@@ -68,6 +87,10 @@ class Agent:
             system_prompt = PLANNING_SYSTEM_PROMPT_BUSINESS
         elif intent == Intent.PING_PROPERTY_SUMMARY:
             system_prompt = PLANNING_SYSTEM_PROMPT_PING_ONLY
+        elif intent == Intent.DEEP_UNDERWRITING_REPORT:
+            system_prompt = PLANNING_SYSTEM_PROMPT_UNDERWRITING_DEEP
+        elif intent == Intent.DEEP_COMPANY_PROFILE:
+            system_prompt = PLANNING_SYSTEM_PROMPT_BUSINESS_DEEP
         else:
             system_prompt = PLANNING_SYSTEM_PROMPT
         try:
@@ -84,6 +107,7 @@ class Agent:
     # ---------- ask LLM what to do ----------
     @show_progress("Thinking...", "")
     def ask_for_actions(self, task_desc: str, last_outputs: str = "") -> AIMessage:
+        self._check_cancel()
         # last_outputs = textual feedback of what we just tried
         intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
         address = self.route_decision.address if self.route_decision else None
@@ -97,8 +121,8 @@ class Agent:
         """
         try:
             if intent == Intent.PING_PROPERTY_SUMMARY:
-                return call_llm(prompt, system_prompt=ACTION_SYSTEM_PROMPT_PING_ONLY, tools=TOOLS)
-            return call_llm(prompt, system_prompt=ACTION_SYSTEM_PROMPT, tools=TOOLS)
+                return call_llm(prompt, system_prompt=ACTION_SYSTEM_PROMPT_PING_ONLY, tools=self._select_tools_for_intent())
+            return call_llm(prompt, system_prompt=ACTION_SYSTEM_PROMPT, tools=self._select_tools_for_intent())
         except Exception as e:
             self.logger._log(f"ask_for_actions failed: {e}")
             return AIMessage(content="Failed to get actions.")
@@ -106,6 +130,7 @@ class Agent:
     # ---------- ask LLM if task is done ----------
     @show_progress("Validating...", "")
     def ask_if_done(self, task_desc: str, recent_results: str) -> bool:
+        self._check_cancel()
         prompt = f"""
         We were trying to complete the task: "{task_desc}".
         Here is a history of tool outputs from the session so far: {recent_results}
@@ -124,6 +149,7 @@ class Agent:
         # Create a dynamic decorator with the tool name
         @show_progress(f"Executing {tool_name}...", "")
         def run_tool():
+            self._check_cancel()
             return tool.run(inp_args)
         return run_tool()
     
@@ -136,6 +162,7 @@ class Agent:
     # ---------- main loop ----------
     def run(self, query: str):
         # Reset state
+        self.reset_cancel()
         step_count = 0
         last_actions = []
         session_outputs = []  # accumulate outputs for the whole session
@@ -180,6 +207,7 @@ class Agent:
                     break
 
                 for tool_call in ai_message.tool_calls:
+                    self._check_cancel()
                     if step_count >= self.max_steps:
                         break
 
@@ -217,6 +245,7 @@ class Agent:
                     break
 
         # Generate answer based on all collected data
+        self._check_cancel()
         answer = self._generate_answer(query, session_outputs)
         self.logger.log_summary(answer)
         return answer
@@ -241,6 +270,9 @@ class Agent:
             system_prompt = UNDERWRITING_REPORT_PROMPT
         elif intent == Intent.BUSINESS_PROFILE:
             system_prompt = BUSINESS_ANSWER_SYSTEM_PROMPT
+        elif intent in (Intent.DEEP_UNDERWRITING_REPORT, Intent.DEEP_COMPANY_PROFILE):
+            # Deep modes share the same answer formats as their standard counterparts
+            system_prompt = UNDERWRITING_REPORT_PROMPT if intent == Intent.DEEP_UNDERWRITING_REPORT else BUSINESS_ANSWER_SYSTEM_PROMPT
         elif intent == Intent.PING_PROPERTY_SUMMARY:
             system_prompt = PING_ONLY_ANSWER_SYSTEM_PROMPT
         else:
@@ -248,3 +280,40 @@ class Agent:
 
         answer_obj = call_llm(answer_prompt, system_prompt=system_prompt, output_schema=Answer)
         return answer_obj.answer
+
+    # ---------- tool selection by intent/settings ----------
+    def _select_tools_for_intent(self):
+        intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
+        # Start with Ping AOA
+        selected = []
+        ping_tool = next((t for t in TOOLS if t.name == 'ping_aoa_search'), None)
+        if ping_tool:
+            selected.append(ping_tool)
+
+        # Deep: include both Google and Brave and Google Images
+        if intent in (Intent.DEEP_UNDERWRITING_REPORT, Intent.DEEP_COMPANY_PROFILE):
+            g_web = next((t for t in TOOLS if t.name == 'google_web_search'), None)
+            g_img = next((t for t in TOOLS if t.name == 'google_image_search'), None)
+            brave = next((t for t in TOOLS if t.name == 'brave_search'), None)
+            for t in (g_web, g_img, brave):
+                if t:
+                    selected.append(t)
+            return selected
+
+        # Ping-only: only ping
+        if intent == Intent.PING_PROPERTY_SUMMARY:
+            return selected
+
+        # Standard modes: use configured search engine
+        if SEARCH_ENGINE == 'google':
+            g_web = next((t for t in TOOLS if t.name == 'google_web_search'), None)
+            g_img = next((t for t in TOOLS if t.name == 'google_image_search'), None)
+            for t in (g_web, g_img):
+                if t:
+                    selected.append(t)
+        else:  # brave
+            brave = next((t for t in TOOLS if t.name == 'brave_search'), None)
+            if brave:
+                selected.append(brave)
+
+        return selected

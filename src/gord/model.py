@@ -8,7 +8,12 @@ from langchain_core.messages import AIMessage
 
 from gord.prompts import DEFAULT_SYSTEM_PROMPT
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0, api_key=os.getenv("OPENAI_API_KEY"))
+llm = ChatOpenAI(
+    model="gpt-4o",
+    temperature=0,
+    api_key=os.getenv("OPENAI_API_KEY"),
+    timeout=60,
+)
 
 def call_llm(
     prompt: str,
