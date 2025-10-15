@@ -8,10 +8,13 @@ from gord.utils.intro import print_intro
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.history import InMemoryHistory
+from gord.doc_ingest import extract_pdf_path, summarize_pdf
+from gord import metrics
 
 COOL_ADDRESSES = [
     "416 Main Street, Medina NY 14103",
     "1 Rocket Rd, Hawthorne, CA 90250, US",
+    "54298 Boca Chica Blvd, Starbase, Texas,"
     # Add more addresses as needed
 ]
 
@@ -74,6 +77,17 @@ def main():
         try:
             query = session.prompt(">> ")
             lower = query.lower().strip()
+            # Drag-and-drop PDF handling
+            pdf_path = extract_pdf_path(query)
+            if pdf_path:
+                try:
+                    fname, size, sha = summarize_pdf(pdf_path)
+                    metrics.increment('pdf_dropped', 1)
+                    print(f"PDF received: {fname} ({size} bytes)\nSHA256: {sha}")
+                    print("(Webhook/API call not yet configured — coming next.)")
+                except Exception as e:
+                    print(f"Error processing PDF: {e}")
+                continue
             if lower in ["exit", "quit"]:
                 print("Goodbye!")
                 break

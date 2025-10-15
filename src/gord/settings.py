@@ -16,3 +16,5 @@ SEARCH_ENGINE = os.getenv('SEARCH_ENGINE', 'google').strip().lower()
 if SEARCH_ENGINE not in ('google', 'brave'):
     SEARCH_ENGINE = 'google'
 
+# Debug flag to control verbosity (defaults to False)
+DEBUG = os.getenv('DEBUG', 'false').strip().lower() in ('1', 'true', 'yes', 'on')

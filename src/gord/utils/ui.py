@@ -4,6 +4,7 @@ import threading
 from contextlib import contextmanager
 from typing import Optional, Callable
 from functools import wraps
+from gord.settings import DEBUG
 
 
 class Colors:
@@ -76,7 +77,6 @@ def show_progress(message: str, success_message: str = ""):
                 spinner.stop(success_message or message.replace("...", " ✓"), symbol="✓", symbol_color=Colors.GREEN)
                 return result
             except KeyboardInterrupt:
-                # Graceful cancel handling
                 spinner.stop("Cancelled", symbol="⎋", symbol_color=Colors.YELLOW)
                 raise
             except Exception as e:
@@ -190,6 +190,7 @@ class UI:
     
     def print_error(self, message: str):
         """Print an error message."""
+        # Always show errors
         print(f"{Colors.RED}✗ Error:{Colors.ENDC} {message}")
     
     def print_warning(self, message: str):
