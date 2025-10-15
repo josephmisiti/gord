@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-dexter-agent = "gord.cli:main"
+gord-agent = "gord.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
