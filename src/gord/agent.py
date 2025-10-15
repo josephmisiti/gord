@@ -14,6 +14,7 @@ from gord.model import call_llm
 from gord.utils.logger import Logger
 from gord.utils.ui import show_progress
 from gord.schemas import Answer, IsDone, Task, TaskList
+from gord.tools import TOOLS
 
 
 class Agent:
