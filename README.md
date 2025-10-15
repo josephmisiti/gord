@@ -40,7 +40,7 @@ cp env.example .env
 
 # Edit .env and add your API keys
 # OPENAI_API_KEY=your-openai-api-key
-# BRAVE_APIKEY=your-brave-api-key
+# BRAVE_API_KEY=your-brave-api-key
 ```
 
 ### Usage

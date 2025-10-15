@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 
-# Load environment variables BEFORE importing any dexter modules
+# Load environment variables BEFORE importing any Gord modules
 load_dotenv()
 
 from gord.agent import Agent
