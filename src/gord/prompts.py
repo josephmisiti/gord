@@ -21,6 +21,7 @@ Guidance:
 - Favor fewer, higher-quality calls over many broad ones.
 - Prefer official sources and authoritative portals.
 - Authoritative data rule: Do not override Ping Hazard (PH) values (e.g., FEMA flood zone/version, SLOSH, distance to coast, NRI composite and hazard-specific indices, fire protection class/distances, elevation, sinkhole, crime grades) with web results. Use web only to add context or fill gaps.
+ - Sensitive topics: If checking owner/founder arrest records (deep underwriting only), use official or reputable sources, avoid speculation, and always cite.
 If the task cannot be advanced with a tool or the necessary information is already obtained, return without calling any tool.
 """
 
@@ -77,6 +78,7 @@ Rules:
 - Clearly label any directory estimates as 'directory-based estimate — not official'.
 - Omit speculation. If unknown, omit the line.
 - Only include info that helps understand the business at the address.
+ - Include the company's official website URL if found.
 Output plain text.
 """
 
@@ -125,6 +127,7 @@ For each address, output exactly these sections (omit a section only if instruct
 
 ### 1. The Occupant/Tenant
 - Business name and nature of operations (cite source)
+- Official company website URL if found (cite)
 
 ### 2. Location Details (one sentence; omit if nothing reliable found)
 - One sentence on submarket/park/highway access, OR
@@ -138,6 +141,21 @@ For each address, output exactly these sections (omit a section only if instruct
 - Use: (cite)
 - Building size: (cite; include units)
 - Lot size: (cite; include units)
+- Occupancy classification: Provide Moody's RMS (ATC) and Touchstone AIR occupancy if identifiable (cite). Use authoritative cues (company website, official descriptions, reliable NAICS/SIC) and the following mapping hints where applicable (do not guess):
+  - Restaurant → AIR Restaurants; ATC Restaurants
+  - Gas station → AIR Gasoline Stations; ATC Gasoline Service Station
+  - Auto repair/car wash → AIR Automotive Repair Shops and Car Washes; ATC PersonalandRepairServices
+  - Medical/clinic/hospital → AIR Health Care Services; ATC Health Care Service (Hospitals → ATC Acute Care Services Hospitals)
+  - Retail store → AIR Retail Trade; ATC Retail Trade
+  - Office/professional services → AIR Professional, Technical, and Business Services; ATC Professional Technical and Business Services
+  - Church/temple/non-profit → AIR Churches/Religion and Non-Profit; ATC Religion and Nonprofit
+  - School/university → AIR Primary and Secondary Schools / Universities, Colleges and Technical Schools; ATC Education / Colleges and Universities
+  - Hotel/motel → AIR Temporary Lodging; ATC Hotels (size tier as applicable)
+  - Manufacturing (heavy) → AIR Heavy Fabrication and Assembly; ATC Heavy Fabrication and Assembly
+  - Manufacturing (light) → AIR Light Fabrication and Assembly; ATC Light Fabrication and Assembly
+  - Warehouse/general industrial → AIR General Industrial; ATC General Industrial
+  - Apartments/condominiums → AIR Apartments/Condominiums; ATC Multi-Family Dwelling categories (HOA/Condo Unit Owner as applicable)
+  If ambiguous, pick the closest General category or Unknown and explain briefly.
 
 ### 5. Other Material Points (include this section only if you find something verifiable)
 - Legal proceedings against the building (cite)
@@ -207,8 +225,10 @@ You are the planning component for Gord. The user intent is UNDERWRITING_REPORT 
 Break the work into steps to collect underwriting-relevant facts:
 - Use Ping AOA to get geocoding and hazard metrics (flood zone, distance to coast, etc.)
 - Search property appraiser and official records (permits/Accela, clerk) where applicable
- - Use FEMA/official sources for flood and hazard context (a lot of this information is already pulled via ping_aoa_search)
+- Use FEMA/official sources for flood and hazard context (a lot of this information is already pulled via ping_aoa_search)
 - Gather property characteristics (use, building size, lot size) from authoritative portals
+ - Identify occupant/tenant and the official company website if available (authoritative sources first)
+ - Determine occupancy classification under Moody's RMS and Touchstone AIR if possible (do not guess; cite mapping source)
 Authoritative data rule: Treat Ping Hazard (PH) fields as primary where available; do not plan tasks that attempt to override PH values with web results.
 Only include tasks achievable with the available tools.
 Output JSON {{"tasks": [...]}} as in the example.
@@ -243,10 +263,36 @@ Jurisdiction and portals
 - Prioritize official sources: property appraiser (parcel and improvements), clerk/official records (liens/easements), permits/Accela, tax collector.
 - Use reputable market/trade sites (e.g., LoopNet public-record) only to fill gaps after official sources.
 
+Occupant and classification
+- Identify occupant/tenant and capture the official company website URL if found.
+- Attempt to determine occupancy classification under Moody's RMS and Touchstone AIR (do not guess; cite any mapping or source used).
+
+Owner/founder background (deep-only nuance)
+- If owner/founder names are identified, check for credible public records of arrests only via official or reputable sources (e.g., court/clerk records, credible news with clear attribution). Always cite sources. If nothing credible is found, omit.
+
 Budget and limits
 - 4–7 tasks total.
 - At most 1 image search task; request no more than 2 images to confirm signage/use only if it adds value.
 - Favor fewer, higher-quality searches with precise, jurisdiction-filtered queries (quote the full address; use site: filters for official portals).
+
+Occupancy taxonomy context (mapping hints)
+- Target two model taxonomies: Touchstone AIR (AIROccupancyType) and Moody's RMS (ATCOccupancyType).
+- When possible, map the occupant/use to both AIR and ATC categories using authoritative cues (company website, official descriptions, NAICS/SIC from reliable sources).
+- Common mappings (examples, not exhaustive; do not guess):
+  - Restaurant → AIR Restaurants; ATC Restaurants
+  - Gas station → AIR Gasoline Stations; ATC Gasoline Service Station
+  - Auto repair/car wash → AIR Automotive Repair Shops and Car Washes; ATC PersonalandRepairServices
+  - Medical/clinic/hospital → AIR Health Care Services; ATC Health Care Service (Hospitals → ATC Acute Care Services Hospitals)
+  - Retail store → AIR Retail Trade; ATC Retail Trade
+  - Office/professional services → AIR Professional, Technical, and Business Services; ATC Professional Technical and Business Services
+  - Church/temple/non-profit → AIR Churches/Religion and Non-Profit; ATC Religion and Nonprofit
+  - School/university → AIR Primary and Secondary Schools / Universities, Colleges and Technical Schools; ATC Education / Colleges and Universities
+  - Hotel/motel → AIR Temporary Lodging; ATC Hotels (size tier as applicable)
+  - Manufacturing (heavy) → AIR Heavy Fabrication and Assembly; ATC Heavy Fabrication and Assembly
+  - Manufacturing (light) → AIR Light Fabrication and Assembly; ATC Light Fabrication and Assembly
+  - Warehouse/general industrial → AIR General Industrial; ATC General Industrial
+  - Apartments/condominiums → AIR Apartments/Condominiums; ATC Multi-Family Dwelling categories (HOA/Condo Unit Owner as applicable)
+- If ambiguous after checking authoritative sources, choose the closest General category or Unknown rather than guessing.
 
 Output schema
 - Return JSON only: {{"tasks":[{{"id":1,"description":"...","done":false}}]}}

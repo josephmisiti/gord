@@ -10,20 +10,21 @@ import pingintel_api
 from gord.utils.logger import Logger
 from gord import metrics
 
+from gord.settings import (
+    NUMBER_SEARCH_RESULTS,
+    BRAVE_SEARCH_URL,
+    BRAVE_API_KEY,
+    GOOGLE_PSE_API_KEY,
+    GOOGLE_PSE_CX,
+    GOOGLE_SEARCH_ENDPOINT
+)
+
 pingclient = pingintel_api.PingDataAPIClient(environment="staging", auth_token=os.environ['PING_DATA_STG_AUTH_TOKEN'])
 
 _LOGGER = Logger()
 
-BRAVE_SEARCH_URL = 'https://api.search.brave.com/res/v1/web/search'
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
 
 
-# Google Programmable Search Engine (PSE)
-GOOGLE_PSE_API_KEY = os.getenv("GOOGLE_PSE_API_KEY")
-GOOGLE_PSE_CX = os.getenv("GOOGLE_PSE_CX")
-GOOGLE_SEARCH_ENDPOINT = "https://www.googleapis.com/customsearch/v1"
-
-NUMBER_SEARCH_RESULTS = 3
 
 
 class BraveSearchInput(BaseModel):
