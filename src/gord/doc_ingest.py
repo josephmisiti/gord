@@ -19,9 +19,17 @@ def _from_file_url(s: str) -> Optional[str]:
 
 
 def extract_pdf_path(text: str) -> Optional[str]:
-    """Try to extract a local PDF path from arbitrary input text.
+    """Deprecated: use extract_dropped_file. Kept for backward compatibility."""
+    return extract_dropped_file(text, exts={'.pdf'})
+
+
+def extract_dropped_file(text: str, exts: Optional[set] = None) -> Optional[str]:
+    """Try to extract a local file path with an allowed extension from arbitrary input text.
     Handles quoted paths, file:// URLs, and simple tokens.
+    exts: set of extensions (lowercase with dot), default {'.pdf', '.xls', '.xlsx'}
     """
+    if exts is None:
+        exts = {'.pdf', '.xls', '.xlsx'}
     raw = text.strip()
     # Direct path attempt
     candidates = [raw]
@@ -50,7 +58,7 @@ def extract_pdf_path(text: str) -> Optional[str]:
             norm = os.path.normpath(expanded)
         except Exception:
             continue
-        if norm.lower().endswith('.pdf') and os.path.exists(norm) and os.path.isfile(norm):
+        if any(norm.lower().endswith(e) for e in exts) and os.path.exists(norm) and os.path.isfile(norm):
             return norm
     return None
 
@@ -64,4 +72,3 @@ def summarize_pdf(path: str) -> Tuple[str, int, str]:
         for chunk in iter(lambda: f.read(1024 * 1024), b''):
             h.update(chunk)
     return fname, size, h.hexdigest()
-

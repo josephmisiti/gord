@@ -18,3 +18,9 @@ if SEARCH_ENGINE not in ('google', 'brave'):
 
 # Debug flag to control verbosity (defaults to False)
 DEBUG = os.getenv('DEBUG', 'false').strip().lower() in ('1', 'true', 'yes', 'on')
+
+# Document ingest / webhook
+DOC_WEBHOOK_URL = os.getenv('DOC_WEBHOOK_URL', '').strip() or None
+DOC_WEBHOOK_TIMEOUT = int(os.getenv('DOC_WEBHOOK_TIMEOUT', '10').strip() or '10')
+DOC_WEBHOOK_AUTH = os.getenv('DOC_WEBHOOK_AUTH', '').strip() or None  # optional Bearer token
+DOC_PREVIEW_BYTES = int(os.getenv('DOC_PREVIEW_BYTES', '50000').strip() or '50000')
