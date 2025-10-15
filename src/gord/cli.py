@@ -9,21 +9,44 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.history import InMemoryHistory
 
+COOL_ADDRESSES = [
+    "416 Main Street, Medina NY 14103",
+    "1 Rocket Rd, Hawthorne, CA 90250, US",
+    # Add more addresses as needed
+]
 
-HELP_TEXT = (
-    "Commands:\n"
-    "- help: show examples and commands\n"
-    "- exit/quit: leave\n"
-    "- cancel/stop: request to stop current run (takes effect between steps)\n"
-    "Shortcuts:\n"
-    "- ESC: request cancel (same as 'cancel')\n"
-    "Examples:\n"
-    "- Business profile: Tell me everything about the business at 416 Main Street, Medina NY 14103\n"
-    "- Underwriting: Generate an underwriting report for 416 Main Street, Medina NY 14103\n"
-    "- Ping-only: What does Ping know about 416 Main Street, Medina NY 14103\n"
-    "- Deep Underwriting: Deep Underwriting Report for 416 Main Street, Medina NY 14103\n"
-    "- Deep Company: Deep Company Profile for 416 Main Street, Medina NY 14103\n"
-)
+def generate_help_text():
+    examples = {
+        "Business profile": "Tell me everything about the business at {address}",
+        "Underwriting": "Generate an underwriting report for {address}",
+        "Ping-only": "What does Ping know about {address}",
+        "Deep Underwriting": "Deep Underwriting Report for {address}",
+        "Deep Company": "Deep Company Profile for {address}",
+    }
+    
+    example_lines = []
+    for example_type, template in examples.items():
+        example_lines.append(f"{example_type}:")
+        for address in COOL_ADDRESSES:
+            example_lines.append(f"  - {template.format(address=address)}")
+        example_lines.append("")  # Blank line for readability
+    
+    examples_section = "\n".join(example_lines)
+    
+    help_text = (
+        "Commands:\n"
+        "- help: show examples and commands\n"
+        "- exit/quit: leave\n"
+        "- cancel/stop: request to stop current run (takes effect between steps)\n"
+        "Shortcuts:\n"
+        "- ESC: request cancel (same as 'cancel')\n"
+        "Examples:\n"
+        f"{examples_section}"
+    )
+    
+    return help_text
+
+HELP_TEXT = generate_help_text()
 
 def main():
     print_intro()

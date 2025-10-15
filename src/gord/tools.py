@@ -170,7 +170,11 @@ def google_image_search(q: str, count: int = NUMBER_SEARCH_RESULTS) -> dict:
     Use for image results with context and thumbnails; supports pagination up to 'count'.
     """
     try:
-        # Hard cap to keep image searches minimal
+        # Run-wide cap: avoid more than 2 image requests total
+        if (metrics.snapshot().get('google_image', 0) or 0) >= 2:
+            _LOGGER._log("[google_image_search] Skipping: image request cap reached for this run")
+            return {"results": [], "note": "image request cap reached"}
+        # Hard cap to keep image searches minimal per call
         capped = min(count, 2)
         items = _google_pse_search(q, count=capped, search_type="image")
         _LOGGER._log(f"[google_image_search] q='{q}'\nResults: {json.dumps(items, indent=2)[:2000]}")
