@@ -5,14 +5,17 @@ from langchain_core.messages import AIMessage
 
 from gord.prompts import (
     ACTION_SYSTEM_PROMPT,
+    ACTION_SYSTEM_PROMPT_PING_ONLY,
     ANSWER_SYSTEM_PROMPT,
     PLANNING_SYSTEM_PROMPT,
     VALIDATION_SYSTEM_PROMPT,
     ROUTER_SYSTEM_PROMPT,
     PLANNING_SYSTEM_PROMPT_BUSINESS,
     PLANNING_SYSTEM_PROMPT_UNDERWRITING,
+    PLANNING_SYSTEM_PROMPT_PING_ONLY,
     BUSINESS_ANSWER_SYSTEM_PROMPT,
     UNDERWRITING_REPORT_PROMPT,
+    PING_ONLY_ANSWER_SYSTEM_PROMPT,
 )
 
 from gord.model import call_llm
@@ -63,6 +66,8 @@ class Agent:
             system_prompt = PLANNING_SYSTEM_PROMPT_UNDERWRITING
         elif intent == Intent.BUSINESS_PROFILE:
             system_prompt = PLANNING_SYSTEM_PROMPT_BUSINESS
+        elif intent == Intent.PING_PROPERTY_SUMMARY:
+            system_prompt = PLANNING_SYSTEM_PROMPT_PING_ONLY
         else:
             system_prompt = PLANNING_SYSTEM_PROMPT
         try:
@@ -91,6 +96,8 @@ class Agent:
         Based on the task and the outputs, what should be the next step?
         """
         try:
+            if intent == Intent.PING_PROPERTY_SUMMARY:
+                return call_llm(prompt, system_prompt=ACTION_SYSTEM_PROMPT_PING_ONLY, tools=TOOLS)
             return call_llm(prompt, system_prompt=ACTION_SYSTEM_PROMPT, tools=TOOLS)
         except Exception as e:
             self.logger._log(f"ask_for_actions failed: {e}")
@@ -234,6 +241,8 @@ class Agent:
             system_prompt = UNDERWRITING_REPORT_PROMPT
         elif intent == Intent.BUSINESS_PROFILE:
             system_prompt = BUSINESS_ANSWER_SYSTEM_PROMPT
+        elif intent == Intent.PING_PROPERTY_SUMMARY:
+            system_prompt = PING_ONLY_ANSWER_SYSTEM_PROMPT
         else:
             system_prompt = ANSWER_SYSTEM_PROMPT
 

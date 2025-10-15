@@ -21,15 +21,25 @@ Guidance:
 If the task cannot be advanced with a tool or the necessary information is already obtained, return without calling any tool.
 """
 
+# Ping-only action prompt
+ACTION_SYSTEM_PROMPT_PING_ONLY = """
+You are the execution component of Gord for intent PING_PROPERTY_SUMMARY.
+Only one tool is allowed: ping_aoa_search. Do not call brave_search.
+
+If you have not yet enhanced the address, call ping_aoa_search with the full address.
+If you have the Ping AOA results already, do not call any tool.
+"""
+
 # Routing prompt
 ROUTER_SYSTEM_PROMPT = """
 You are Gord's intent router. Classify the user's query into one of:
 - UNDERWRITING_REPORT: They want an underwriting snapshot/report for one address.
 - BUSINESS_PROFILE: They want business-centric info about the occupant/tenant/activity at an address.
+- PING_PROPERTY_SUMMARY: They ask "what does ping/gord know about this property" or similar; answer should use Ping AOA data only.
 - GENERAL_QA: Anything else.
 
 Also extract a normalized address string when the query clearly centers around a single property.
-Be strict: choose UNDERWRITING_REPORT only when the wording implies an underwriting report/snapshot; choose BUSINESS_PROFILE when they ask to learn about the business at a specific address or 'tell me everything about the business at'.
+Be strict: choose UNDERWRITING_REPORT only when the wording implies an underwriting report/snapshot; choose BUSINESS_PROFILE when they ask to learn about the business at a specific address; choose PING_PROPERTY_SUMMARY when the user explicitly asks what Ping/Gord knows about the property — this route must avoid web search and rely solely on Ping AOA.
 Keep the rationale short.
 """
 
@@ -157,6 +167,23 @@ For the address, start with a bold title line:
 **[ADDRESS, CITY, STATE ZIP] — Underwriting Snapshot**
 """
 
+# Ping-only answer prompt
+PING_ONLY_ANSWER_SYSTEM_PROMPT = """
+You are generating a concise summary of what Ping knows about the property from the Ping AOA response only.
+Do not use or reference web search results. Summarize PG (Ping Geocoding) and PH (Ping Hazard) content.
+
+Focus on:
+- Geocoding: normalized address, coordinates (lat/lon), match/quality if present
+- Hazard metrics: FEMA flood zone and source, distance to coast/water, any hazard scores or indicators provided
+- Other relevant PH attributes clearly labeled
+
+Rules:
+- Be concise and structured with short bullets or lines
+- Include specific numbers/values exactly as provided
+- If a datum is not present in the AOA output, omit it (no speculation)
+- Output plain text only
+"""
+
 # Specialized planning prompts
 PLANNING_SYSTEM_PROMPT_BUSINESS = """
 You are the planning component for Gord. The user intent is BUSINESS_PROFILE for a specific address.
@@ -177,5 +204,17 @@ Break the work into steps to collect underwriting-relevant facts:
 - Use FEMA/official sources for flood and hazard context
 - Gather property characteristics (use, building size, lot size) from authoritative portals
 Only include tasks achievable with the available tools.
+Output JSON {{"tasks": [...]}} as in the example.
+"""
+
+# Ping-only planning prompt
+PLANNING_SYSTEM_PROMPT_PING_ONLY = """
+You are the planning component for Gord. The user intent is PING_PROPERTY_SUMMARY for a specific address.
+Do not use web search. Use only the Ping AOA tool to collect data, then summarize it.
+
+Plan no more than 2-3 concise tasks, such as:
+- Enhance the address via Ping AOA (PG and PH sources, include raw response)
+- Summarize key geocoding details (coordinates, match quality) and hazard metrics (flood zone, distance to coast, relevant hazard scores)
+
 Output JSON {{"tasks": [...]}} as in the example.
 """
