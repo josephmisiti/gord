@@ -1,5 +1,9 @@
 version = 1
 requires-python = ">=3.10"
+resolution-markers = [
+    "python_full_version >= '3.11'",
+    "python_full_version < '3.11'",
+]
 
 [[package]]
 name = "annotated-types"
@@ -133,6 +137,18 @@ wheels = [
 ]
 
 [[package]]
+name = "click"
+version = "8.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "python_full_version >= '3.11' and platform_system == 'Windows'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/46/61/de6cd827efad202d7057d93e0fed9294b96952e188f7384832791c7b2254/click-8.3.0.tar.gz", hash = "sha256:e7b8232224eba16f4ebe410c25ced9f7875cb5f3263ffc93cc3e8da705e229c4", size = 276943 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/d3/9dcc0f5797f070ec8edf30fbadfb200e71d9db6b84d211e3b2085a7589a0/click-8.3.0-py3-none-any.whl", hash = "sha256:9b9f285302c6e3064f4330c05f05b81945b2a39544279343e6e7c5f27a9baddc", size = 107295 },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -155,7 +171,7 @@ name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749 }
 wheels = [
@@ -170,6 +186,8 @@ dependencies = [
     { name = "langchain" },
     { name = "langchain-openai" },
     { name = "openai" },
+    { name = "pingintel-api", version = "0.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pingintel-api", version = "1.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "prompt-toolkit" },
     { name = "pydantic" },
     { name = "python-dotenv" },
@@ -181,6 +199,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=0.3.27" },
     { name = "langchain-openai", specifier = ">=0.3.35" },
     { name = "openai", specifier = ">=2.2.0" },
+    { name = "pingintel-api", specifier = ">=0.1.0" },
     { name = "prompt-toolkit", specifier = ">=3.0.0" },
     { name = "pydantic", specifier = ">=2.11.10" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
@@ -562,6 +581,34 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/d4/1fc4078c65507b51b96ca8f8c3ba19e6a61c8253c72794544580a7b6c24d/packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f", size = 165727 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484", size = 66469 },
+]
+
+[[package]]
+name = "pingintel-api"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c6/bf/0b84716121679c8d6e04492eecc2f04124d803de999e0b7746d1303ab756/pingintel_api-0.1.0.tar.gz", hash = "sha256:5cee2703d3b3b72d1b68f240ca1377b9e3467b76cc1d62fea41932d7182c521b", size = 7170 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/22/14c5330e7bf26d8ba4fd00501aedaa4c67b3bd88697bc855c8283559d9c3/pingintel_api-0.1.0-py3-none-any.whl", hash = "sha256:81f5bbc916227b48854256454604e70adba9284fff5f82a13b47dfce62737e05", size = 7864 },
+]
+
+[[package]]
+name = "pingintel-api"
+version = "1.3.5"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.11'",
+]
+dependencies = [
+    { name = "click", marker = "python_full_version >= '3.11'" },
+    { name = "requests", marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bb/4a/564fe087436f2e4064468bc8da22abc8f5e28bf0eafb16bccf25183c7764/pingintel_api-1.3.5.tar.gz", hash = "sha256:772f905df9eb470ec565077d0d4123a107490fc4c65eecc1f69fb7436296d1c3", size = 42138 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/ca/b65091645094a7bb2facb92ff3d1935026622b2ba04a6be2ed4af24eac4c/pingintel_api-1.3.5-py3-none-any.whl", hash = "sha256:e96c683906f6465e17b0e9749c1c27b00bb7f5a49f255d350e952c1dea21d549", size = 36928 },
 ]
 
 [[package]]

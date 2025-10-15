@@ -12,6 +12,13 @@ def main():
     print_intro()
     agent = Agent()
 
+
+    # query = "Tell me everything you can find about 1428 west ave miami FL 33139"
+
+    # agent.run(query)
+
+    # return
+
     # Create a prompt session with history support
     session = PromptSession(history=InMemoryHistory())
 

@@ -3,16 +3,20 @@ from pydantic import BaseModel, Field
 from typing import Optional
 import requests
 import os
+import json
+import pingintel_api
 
-####################################
-# Configuration
-####################################
+
+from gord.utils.logger import Logger
+
+pingclient = pingintel_api.PingDataAPIClient(environment="staging")
+
+_LOGGER = Logger()
+
 BRAVE_SEARCH_URL = 'https://api.search.brave.com/res/v1/web/search'
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
 
-####################################
-# Schema
-####################################
+
 class BraveSearchInput(BaseModel):
     q: str = Field(
         description="The search query string to send to Brave Search. Use natural language or keywords to find relevant web results."
@@ -26,9 +30,26 @@ class BraveSearchInput(BaseModel):
         description="Country code for localized results (e.g., 'US', 'GB', 'CA')"
     )
 
-####################################
-# Tool
-####################################
+
+class PingAoaInput(BaseModel):
+    address: str = Field(
+        description="Address to enhance via Ping AOA"
+    )
+
+@tool(args_schema=PingAoaInput)
+def ping_aoa_search(address: str) -> dict:
+    """
+    Enhances an address using the Ping Data API and returns detailed location information.
+    
+    If you provide an address to this tool, it will return enriched location data, specifically
+    the information in the 'PG' and 'PH' sources. PG stands for Ping Geocoding, and PH stands for 
+    Ping Hazard, which returns assessment data, flood zones, distance to coast ,etc about that location
+    """
+    ret = pingclient.enhance(address=address, sources=["PG", "PH"], include_raw_response=True)
+    _LOGGER._log(f"[ping_aoa_search] Address: {address}\nResponse: {json.dumps(ret, indent=2)[:8000]}")  
+    return ret
+
+
 @tool(args_schema=BraveSearchInput)
 def brave_search(
     q: str,
@@ -56,7 +77,5 @@ def brave_search(
     response.raise_for_status()
     return response.json()
 
-####################################
-# Tool List (for agent use)
-####################################
-TOOLS = [brave_search]
+
+TOOLS = [brave_search, ping_aoa_search]
