@@ -26,12 +26,13 @@ from gord.utils.ui import show_progress
 from gord.schemas import Answer, IsDone, Task, TaskList, RouteDecision, Intent
 from gord.tools import TOOLS
 from gord.settings import SEARCH_ENGINE
+from gord import metrics
 
 
 class Agent:
-    def __init__(self, max_steps: int = 20, max_steps_per_task: int = 5):
+    def __init__(self, max_steps: int = 30, max_steps_per_task: int = 5):
         self.logger = Logger()
-        self.max_steps = max_steps            # global safety cap
+        self.max_steps = max_steps       
         self.max_steps_per_task = max_steps_per_task
         self.route_decision: Optional[RouteDecision] = None
         import threading
@@ -162,6 +163,7 @@ class Agent:
     # ---------- main loop ----------
     def run(self, query: str):
         # Reset state
+        metrics.reset()
         self.reset_cancel()
         step_count = 0
         last_actions = []
@@ -248,6 +250,8 @@ class Agent:
         self._check_cancel()
         answer = self._generate_answer(query, session_outputs)
         self.logger.log_summary(answer)
+        # Print API usage metrics at end
+        self.logger.log_metrics(metrics.snapshot())
         return answer
     
     # ---------- answer generation ----------

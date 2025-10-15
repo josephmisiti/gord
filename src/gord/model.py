@@ -7,6 +7,7 @@ from langchain_core.tools import BaseTool
 from langchain_core.messages import AIMessage
 
 from gord.prompts import DEFAULT_SYSTEM_PROMPT
+from gord import metrics
 
 llm = ChatOpenAI(
     model="gpt-4o",
@@ -35,4 +36,5 @@ def call_llm(
       runnable = llm.bind_tools(tools)
   
   chain = prompt_template | runnable
+  metrics.increment('openai', 1)
   return chain.invoke({"prompt": prompt})

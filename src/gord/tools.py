@@ -8,6 +8,7 @@ import pingintel_api
 
 
 from gord.utils.logger import Logger
+from gord import metrics
 
 pingclient = pingintel_api.PingDataAPIClient(environment="staging", auth_token=os.environ['PING_DATA_STG_AUTH_TOKEN'])
 
@@ -21,6 +22,8 @@ BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
 GOOGLE_PSE_API_KEY = os.getenv("GOOGLE_PSE_API_KEY")
 GOOGLE_PSE_CX = os.getenv("GOOGLE_PSE_CX")
 GOOGLE_SEARCH_ENDPOINT = "https://www.googleapis.com/customsearch/v1"
+
+NUMBER_SEARCH_RESULTS = 3
 
 
 class BraveSearchInput(BaseModel):
@@ -51,6 +54,7 @@ def ping_aoa_search(address: str) -> dict:
     the information in the 'PG' and 'PH' sources. PG stands for Ping Geocoding, and PH stands for 
     Ping Hazard, which returns assessment data, flood zones, distance to coast ,etc about that location
     """
+    metrics.increment('ping_aoa', 1)
     ret = pingclient.enhance(address=address, sources=["PG", "PH"], include_raw_response=True)
     _LOGGER._log(f"[ping_aoa_search] Address: {address}\nResponse: {json.dumps(ret, indent=2)[:8000]}")  
     return ret
@@ -59,7 +63,7 @@ def ping_aoa_search(address: str) -> dict:
 @tool(args_schema=BraveSearchInput)
 def brave_search(
     q: str,
-    count: Optional[int] = 10,
+    count: Optional[int] = NUMBER_SEARCH_RESULTS,
     country: Optional[str] = None
 ) -> dict:
     """
@@ -82,6 +86,7 @@ def brave_search(
     
     response = requests.get(BRAVE_SEARCH_URL, params=params, headers=headers, timeout=30)
     response.raise_for_status()
+    metrics.increment('brave', 1)
     return response.json()
 
 
@@ -116,6 +121,11 @@ def _google_pse_search(query: str, count: int = 10, search_type: str = "web") ->
             params["searchType"] = "image"
         r = requests.get(GOOGLE_SEARCH_ENDPOINT, params=params, timeout=30)
         r.raise_for_status()
+        # Count by request and by type
+        if search_type == "image":
+            metrics.increment('google_image', 1)
+        else:
+            metrics.increment('google_web', 1)
         data = r.json()
         items = data.get("items", [])
         if not items:
@@ -154,13 +164,15 @@ def google_web_search(q: str, count: int = 10) -> dict:
 
 
 @tool(args_schema=GoogleImageSearchInput)
-def google_image_search(q: str, count: int = 10) -> dict:
+def google_image_search(q: str, count: int = NUMBER_SEARCH_RESULTS) -> dict:
     """
     Google Programmable Search (image). Returns {"results": [{title, link, snippet, image_context_link, thumbnail_link}, ...]}.
     Use for image results with context and thumbnails; supports pagination up to 'count'.
     """
     try:
-        items = _google_pse_search(q, count=count, search_type="image")
+        # Hard cap to keep image searches minimal
+        capped = min(count, 2)
+        items = _google_pse_search(q, count=capped, search_type="image")
         _LOGGER._log(f"[google_image_search] q='{q}'\nResults: {json.dumps(items, indent=2)[:2000]}")
         return {"results": items}
     except Exception as e:

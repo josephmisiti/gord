@@ -174,6 +174,15 @@ class UI:
         
         # Bottom border
         print(f"{Colors.BOLD}{Colors.BLUE}╚{'═' * (width - 2)}╝{Colors.ENDC}\n")
+
+    def print_metrics(self, metrics: dict):
+        """Print API usage metrics after the answer."""
+        if not metrics:
+            return
+        print(f"{Colors.BOLD}{Colors.MAGENTA}API USAGE{Colors.ENDC}")
+        for k, v in metrics.items():
+            print(f"- {k}: {v}")
+        print("")
     
     def print_info(self, message: str):
         """Print an info message."""
