@@ -9,7 +9,7 @@ import pingintel_api
 
 from gord.utils.logger import Logger
 
-pingclient = pingintel_api.PingDataAPIClient(environment="staging")
+pingclient = pingintel_api.PingDataAPIClient(environment="staging", auth_token=os.environ['PING_DATA_STG_AUTH_TOKEN'])
 
 _LOGGER = Logger()
 
