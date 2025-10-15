@@ -7,3 +7,13 @@ class Agent:
         self.logger = Logger()
         self.max_steps = max_steps           
         self.max_steps_per_task = max_steps_per_task
+
+
+    # ---------- main loop ----------
+    def run(self, query: str):
+        # Reset state
+        step_count = 0
+        last_actions = []
+        session_outputs = []  # accumulate outputs for the whole session
+
+        breakpoint()
