@@ -63,6 +63,7 @@ def brave_search(
     or any other information available on the public web. Returns web page titles,
     snippets, URLs, and other metadata from the search results.
     """
+    print('querying brave search api', q)
     headers = {
         "Accept": "application/json",
         "Accept-Encoding": "gzip",

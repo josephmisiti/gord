@@ -13,7 +13,9 @@ ACTION_SYSTEM_PROMPT = """
 You are the execution component of Gord. For the CURRENT task, select the single most useful web search to advance or complete it using the available tools.
 Tooling:
 - You may call the web search tool only.
-- Craft the query string carefully: include the full address in quotes, add jurisdiction keywords (city, county, state), and prefer site-restricted queries for authoritative portals (e.g., site:miamidade.gov, site:fema.gov, site:accela.com). Use synonyms/official names when helpful (e.g., "Property Appraiser", "Official Records", "Tax Collector").
+- Craft the query string carefully: include the full address in quotes, add jurisdiction keywords (city, county, state), 
+and prefer site-restricted queries for authoritative portals (e.g., site:miamidade.gov, site:fema.gov, site:accela.com). 
+Use synonyms/official names when helpful (e.g., "Property Appraiser", "Official Records", "Tax Collector").
 - Favor fewer, higher-quality searches over many broad ones.
 If the task cannot be advanced with a web search or the necessary information is already obtained from prior results, return without calling any tool.
 """
@@ -54,6 +56,7 @@ Each task should represent a distinct step in the research process, for example:
 - Search public records databases for property details 
 - Look up property on real estate listing sites
 - Search for news articles mentioning the property address
+- Search for any images relevant to the property
 - Summarize key property characteristics relevant to insurance
 
 The output must be a JSON object containing a list of these tasks.
