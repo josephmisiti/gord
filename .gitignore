@@ -3,6 +3,8 @@
 .env.local
 .env.*
 
+.gord/
+
 # Python
 __pycache__/
 *.py[cod]
