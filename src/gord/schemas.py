@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
+from enum import Enum
 
 class Task(BaseModel):
     """Represents a single task in a task list."""
@@ -18,3 +19,20 @@ class IsDone(BaseModel):
 class Answer(BaseModel):
     """Represents an answer to the user's query."""
     answer: str = Field(..., description="A comprehensive answer to the user's query, including relevant numbers, data, reasoning, and insights.")
+
+
+class Intent(str, Enum):
+    """Supported high-level intents for routing."""
+    UNDERWRITING_REPORT = "UNDERWRITING_REPORT"
+    BUSINESS_PROFILE = "BUSINESS_PROFILE"
+    GENERAL_QA = "GENERAL_QA"
+    PING_PROPERTY_SUMMARY = "PING_PROPERTY_SUMMARY"
+    DEEP_UNDERWRITING_REPORT = "DEEP_UNDERWRITING_REPORT"
+    DEEP_COMPANY_PROFILE = "DEEP_COMPANY_PROFILE"
+
+
+class RouteDecision(BaseModel):
+    """Router output indicating which mode to use and any extracted entities."""
+    intent: Intent = Field(..., description="Which path to take for answering the query.")
+    address: Optional[str] = Field(None, description="Normalized address if present/required for the intent.")
+    rationale: Optional[str] = Field(None, description="Brief reasoning for the routing decision.")

@@ -75,6 +75,10 @@ def show_progress(message: str, success_message: str = ""):
                 result = func(*args, **kwargs)
                 spinner.stop(success_message or message.replace("...", " ✓"), symbol="✓", symbol_color=Colors.GREEN)
                 return result
+            except KeyboardInterrupt:
+                # Graceful cancel handling
+                spinner.stop("Cancelled", symbol="⎋", symbol_color=Colors.YELLOW)
+                raise
             except Exception as e:
                 spinner.stop(f"Failed: {str(e)}", symbol="✗", symbol_color=Colors.RED)
                 raise
@@ -170,6 +174,15 @@ class UI:
         
         # Bottom border
         print(f"{Colors.BOLD}{Colors.BLUE}╚{'═' * (width - 2)}╝{Colors.ENDC}\n")
+
+    def print_metrics(self, metrics: dict):
+        """Print API usage metrics after the answer."""
+        if not metrics:
+            return
+        print(f"{Colors.BOLD}{Colors.MAGENTA}API USAGE{Colors.ENDC}")
+        for k, v in metrics.items():
+            print(f"- {k}: {v}")
+        print("")
     
     def print_info(self, message: str):
         """Print an info message."""
@@ -182,4 +195,3 @@ class UI:
     def print_warning(self, message: str):
         """Print a warning message."""
         print(f"{Colors.YELLOW}⚠ Warning:{Colors.ENDC} {message}")
-

@@ -37,3 +37,6 @@ class Logger:
     def progress(self, message: str, success_message: str = ""):
         """Return a progress context manager for showing loading states."""
         return self.ui.progress(message, success_message)
+
+    def log_metrics(self, metrics: dict):
+        self.ui.print_metrics(metrics)
