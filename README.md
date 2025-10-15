@@ -2,7 +2,7 @@
 
 Gord is Ping Intel's E&S Property Agent.
 
-<img width="979" height="651" alt="Screenshot 2025-10-14 at 10.56.45 PM" src="https://github.com/user-attachments/assets/6e623031-9e49-4c7b-b48f-c599413663b" />
+<img width="979" height="651" alt="Screenshot 2025-10-14 at 10.56.45 PM" src="https://github.com/user-attachments/assets/19ba8dcf-e4cf-48ff-a212-55796e210b04" />
 
 ## Overview
 
