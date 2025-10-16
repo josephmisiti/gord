@@ -36,3 +36,9 @@ class RouteDecision(BaseModel):
     intent: Intent = Field(..., description="Which path to take for answering the query.")
     address: Optional[str] = Field(None, description="Normalized address if present/required for the intent.")
     rationale: Optional[str] = Field(None, description="Brief reasoning for the routing decision.")
+
+
+class SOVIntake(BaseModel):
+    """Structured extraction from an SOV JSON output for routing decisions."""
+    num_locations: int = Field(0, description="Estimated number of distinct locations/records in the SOV.")
+    addresses: List[str] = Field(default_factory=list, description="A list of up to 10 address strings found.")

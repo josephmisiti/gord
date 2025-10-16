@@ -1,4 +1,5 @@
 from gord.utils.ui import UI
+from gord.settings import DEBUG
 
 
 class Logger:
@@ -10,7 +11,8 @@ class Logger:
 
     def _log(self, msg: str):
         """Print immediately and keep in log."""
-        print(msg, flush=True)
+        if DEBUG:
+            print(msg, flush=True)
         self.log.append(msg)
 
     def log_header(self, msg: str):
