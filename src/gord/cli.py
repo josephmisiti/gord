@@ -123,34 +123,72 @@ def main():
                     print("\nSOV SUMMARY:\n" + answer.answer)
 
                     # Extract locations for routing decision
-                    intake = call_llm(f"Extract locations from this SOV JSON:\n\n{json_text[:200000]}", system_prompt=SOV_PARSE_SYSTEM_PROMPT, output_schema=SOVIntake)
+                    intake = call_llm(
+                        f"Extract locations from this SOV JSON:\n\n{json_text[:200000]}",
+                        system_prompt=SOV_PARSE_SYSTEM_PROMPT,
+                        output_schema=SOVIntake,
+                    )
+                    addrs = getattr(intake, 'addresses', []) or []
                     found = int(getattr(intake, 'num_locations', 0) or 0)
-                    if found > 0:
-                        # Show sample addresses
-                        addrs = getattr(intake, 'addresses', []) or []
-                        if addrs:
-                            print("\nFound addresses:")
-                            for i, a in enumerate(addrs[:5], 1):
-                                print(f"  {i}. {a}")
-                        # Ask whether to route to agent
-                        cont = session.prompt("\nRoute to agent now? [y/N]: ").strip().lower()
-                        if cont in ("y", "yes"):
-                            chosen = None
-                            if addrs:
-                                sel = session.prompt("Address to analyze [1]: ").strip()
-                                if not sel:
-                                    chosen = addrs[0]
-                                else:
-                                    try:
-                                        idx = max(1, min(len(addrs), int(sel)))
-                                        chosen = addrs[idx-1]
-                                    except Exception:
-                                        chosen = sel  # treat as custom address
-                            else:
-                                chosen = session.prompt("Enter an address to analyze: ").strip()
-                            if chosen:
-                                q = f"Deep Underwriting Report for: {chosen}"
-                                agent.run(q)
+
+                    if found <= 0 or not addrs:
+                        print("\nNo addresses found in SOV (or parsing failed). Not routing to agent.")
+                        continue
+
+                    # Display addresses (up to 10)
+                    print("\nFound addresses:")
+                    for i, a in enumerate(addrs, 1):
+                        print(f"  {i}. {a}")
+
+                    # Ask whether to route to agent
+                    cont = session.prompt("\nRoute to agent now? [y/N]: ").strip().lower()
+                    if cont not in ("y", "yes"):
+                        continue
+
+                    # Select address: if one, auto-select; if many, ask for selection
+                    if len(addrs) == 1:
+                        chosen = addrs[0]
+                    else:
+                        while True:
+                            sel = session.prompt("Select address by number or paste a custom address [1]: ").strip()
+                            if not sel:
+                                chosen = addrs[0]
+                                break
+                            try:
+                                idx = int(sel)
+                                if 1 <= idx <= len(addrs):
+                                    chosen = addrs[idx-1]
+                                    break
+                                # If out of range, treat as custom
+                                chosen = sel
+                                break
+                            except Exception:
+                                chosen = sel
+                                break
+
+                    if not chosen:
+                        print("No address selected; returning to prompt.")
+                        continue
+
+                    # Ask free-form route prompt
+                    help_hint = (
+                        "Examples: 'Deep Underwriting Report', 'Underwriting Report', "
+                        "'Deep Company Profile', 'Business profile', 'What does Ping know'."
+                    )
+                    route_text = session.prompt(
+                        f"How can I help you with '{chosen}'?\n{help_hint}\n> "
+                    ).strip()
+                    if not route_text:
+                        print("No request entered; returning to prompt.")
+                        continue
+
+                    # Compose final query; append address if not present
+                    low = route_text.lower()
+                    if chosen.lower() not in low:
+                        final_query = f"{route_text} for: {chosen}"
+                    else:
+                        final_query = route_text
+                    agent.run(final_query)
                 except Exception as e:
                     print(f"Failed to summarize or route: {e}")
                 continue
