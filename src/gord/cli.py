@@ -11,7 +11,8 @@ from prompt_toolkit.history import InMemoryHistory
 from gord.doc_ingest import extract_dropped_file, summarize_pdf
 from gord.sovfixer import start_and_poll
 from gord.model import call_llm
-from gord.schemas import Answer
+from gord.schemas import Answer, SOVIntake
+from gord.prompts import SOV_PARSE_SYSTEM_PROMPT
 from gord import metrics
 
 COOL_ADDRESSES = [
@@ -120,8 +121,38 @@ def main():
                     full_prompt = f"{prompt}\n\nJSON:\n{json_text[:200000]}"
                     answer = call_llm(full_prompt, output_schema=Answer)
                     print("\nSOV SUMMARY:\n" + answer.answer)
+
+                    # Extract locations for routing decision
+                    intake = call_llm(f"Extract locations from this SOV JSON:\n\n{json_text[:200000]}", system_prompt=SOV_PARSE_SYSTEM_PROMPT, output_schema=SOVIntake)
+                    found = int(getattr(intake, 'num_locations', 0) or 0)
+                    if found > 0:
+                        # Show sample addresses
+                        addrs = getattr(intake, 'addresses', []) or []
+                        if addrs:
+                            print("\nFound addresses:")
+                            for i, a in enumerate(addrs[:5], 1):
+                                print(f"  {i}. {a}")
+                        # Ask whether to route to agent
+                        cont = session.prompt("\nRoute to agent now? [y/N]: ").strip().lower()
+                        if cont in ("y", "yes"):
+                            chosen = None
+                            if addrs:
+                                sel = session.prompt("Address to analyze [1]: ").strip()
+                                if not sel:
+                                    chosen = addrs[0]
+                                else:
+                                    try:
+                                        idx = max(1, min(len(addrs), int(sel)))
+                                        chosen = addrs[idx-1]
+                                    except Exception:
+                                        chosen = sel  # treat as custom address
+                            else:
+                                chosen = session.prompt("Enter an address to analyze: ").strip()
+                            if chosen:
+                                q = f"Deep Underwriting Report for: {chosen}"
+                                agent.run(q)
                 except Exception as e:
-                    print(f"Failed to summarize JSON: {e}")
+                    print(f"Failed to summarize or route: {e}")
                 continue
             if lower in ["exit", "quit"]:
                 print("Goodbye!")

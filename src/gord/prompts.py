@@ -25,6 +25,19 @@ Guidance:
 If the task cannot be advanced with a tool or the necessary information is already obtained, return without calling any tool.
 """
 
+# SOV parsing prompt (structured extraction)
+SOV_PARSE_SYSTEM_PROMPT = """
+You are an expert at reading machine-produced SOV (Statement of Values) JSON outputs.
+Given a JSON text representing an SOV extraction result, identify:
+- The number of distinct locations/records in the file
+- Up to 10 address strings (street, city, state, zip) that represent those locations
+
+Rules:
+- Output only valid JSON matching this schema: {{"num_locations": int, "addresses": [string, ...]}}
+- If unsure about address count, make a reasonable best effort based on rows/records in the JSON.
+- Avoid duplicates in addresses; normalize to a single-line "street, city, state zip" when possible.
+"""
+
 # Ping-only action prompt
 ACTION_SYSTEM_PROMPT_PING_ONLY = """
 You are the execution component of Gord for intent PING_PROPERTY_SUMMARY.
