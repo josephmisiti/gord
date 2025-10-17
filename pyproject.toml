@@ -11,6 +11,8 @@ requires-python = ">=3.10"
 dependencies = [
     "langchain>=0.3.27",
     "langchain-openai>=0.3.35",
+    "langchain-anthropic>=0.1.22",
+    "langchain-google-genai>=2.0.0",
     "openai>=2.2.0",
     "pingintel-api>=0.1.0",
     "prompt-toolkit>=3.0.0",
