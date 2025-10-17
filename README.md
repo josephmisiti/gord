@@ -38,7 +38,7 @@ uv sync
 # Copy the example environment file
 cp env.example .env
 
-Add your keys ... 
+Add your keys ...
 ```
 
 ### Usage
@@ -54,3 +54,7 @@ uv run gord-agent
 Try asking Gord questions like:
 
 - "Please create an underwriting report for 1428 west ave miami fl 33139?"
+
+### Project
+
+https://linear.app/pingintel/project/agentic-underwriting-mvp-7b8ed2727cd4/overview

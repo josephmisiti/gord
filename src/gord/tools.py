@@ -189,5 +189,5 @@ TOOLS = [
     ping_aoa_search,
     google_web_search,
     google_image_search,
-    brave_search,            # kept for now
+    brave_search,  
 ]

@@ -29,6 +29,7 @@ from gord.settings import SEARCH_ENGINE
 from gord import metrics
 
 
+
 class Agent:
     def __init__(self, max_steps: int = 30, max_steps_per_task: int = 5):
         self.logger = Logger()
@@ -38,7 +39,6 @@ class Agent:
         import threading
         self._cancel_event = threading.Event()
 
-    # ---------- cancel control ----------
     def request_cancel(self):
         self._cancel_event.set()
 
@@ -49,7 +49,6 @@ class Agent:
         if self._cancel_event.is_set():
             raise KeyboardInterrupt()
 
-    # ---------- routing ----------
     @show_progress("Routing...", "Routed")
     def route(self, query: str) -> RouteDecision:
         self._check_cancel()
@@ -61,7 +60,6 @@ class Agent:
             self.logger._log(f"Routing failed: {e}")
             return RouteDecision(intent=Intent.GENERAL_QA, address=None, rationale="Fallback after error.")
 
-    # ---------- task planning ----------
     @show_progress("Planning tasks...", "Tasks planned")
     def plan_tasks(self, query: str) -> List[Task]:
         self._check_cancel()
@@ -105,9 +103,9 @@ class Agent:
         self.logger.log_task_list(task_dicts)
         return tasks
 
-    # ---------- ask LLM what to do ----------
     @show_progress("Thinking...", "")
     def ask_for_actions(self, task_desc: str, last_outputs: str = "") -> AIMessage:
+        """ ask LLM what to do  """
         self._check_cancel()
         # last_outputs = textual feedback of what we just tried
         intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
@@ -128,9 +126,9 @@ class Agent:
             self.logger._log(f"ask_for_actions failed: {e}")
             return AIMessage(content="Failed to get actions.")
 
-    # ---------- ask LLM if task is done ----------
     @show_progress("Validating...", "")
     def ask_if_done(self, task_desc: str, recent_results: str) -> bool:
+        """ ask LLM if task is done """
         self._check_cancel()
         prompt = f"""
         We were trying to complete the task: "{task_desc}".
@@ -144,7 +142,6 @@ class Agent:
         except:
             return False
 
-    # ---------- tool execution ----------
     def _execute_tool(self, tool, tool_name: str, inp_args):
         """Execute a tool with progress indication."""
         # Create a dynamic decorator with the tool name
@@ -154,16 +151,14 @@ class Agent:
             return tool.run(inp_args)
         return run_tool()
     
-    # ---------- confirm action ----------
     def confirm_action(self, tool: str, input_str: str) -> bool:
         # In production you'd ask the user; here we just log and auto-confirm
         # Risky tools are not implemented in this version.
         return True
 
-    # ---------- main loop ----------
     def run(self, query: str):
-        # Reset state
-        metrics.reset()
+        """Main agent loop."""
+        metrics.reset() # Reset state
         self.reset_cancel()
         step_count = 0
         last_actions = []
@@ -254,7 +249,6 @@ class Agent:
         self.logger.log_metrics(metrics.snapshot())
         return answer
     
-    # ---------- answer generation ----------
     @show_progress("Generating answer...", "Answer ready")
     def _generate_answer(self, query: str, session_outputs: list) -> str:
         """Generate the final answer based on collected data."""
@@ -285,16 +279,16 @@ class Agent:
         answer_obj = call_llm(answer_prompt, system_prompt=system_prompt, output_schema=Answer)
         return answer_obj.answer
 
-    # ---------- tool selection by intent/settings ----------
     def _select_tools_for_intent(self):
+        "tool selection by intent/settings"
         intent = self.route_decision.intent if self.route_decision else Intent.GENERAL_QA
-        # Start with Ping AOA
+        # Always start with Ping AOA
         selected = []
         ping_tool = next((t for t in TOOLS if t.name == 'ping_aoa_search'), None)
         if ping_tool:
             selected.append(ping_tool)
 
-        # Deep: include both Google and Brave and Google Images
+        # "Deep search" includes both Google and Brave and Google Images
         if intent in (Intent.DEEP_UNDERWRITING_REPORT, Intent.DEEP_COMPANY_PROFILE):
             g_web = next((t for t in TOOLS if t.name == 'google_web_search'), None)
             g_img = next((t for t in TOOLS if t.name == 'google_image_search'), None)
@@ -304,11 +298,9 @@ class Agent:
                     selected.append(t)
             return selected
 
-        # Ping-only: only ping
         if intent == Intent.PING_PROPERTY_SUMMARY:
             return selected
 
-        # Standard modes: use configured search engine
         if SEARCH_ENGINE == 'google':
             g_web = next((t for t in TOOLS if t.name == 'google_web_search'), None)
             g_img = next((t for t in TOOLS if t.name == 'google_image_search'), None)

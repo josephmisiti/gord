@@ -19,7 +19,6 @@ COOL_ADDRESSES = [
     "416 Main Street, Medina NY 14103",
     "1 Rocket Rd, Hawthorne, CA 90250, US",
     "54298 Boca Chica Blvd, Starbase, Texas,"
-    # Add more addresses as needed
 ]
 
 def generate_help_text():
