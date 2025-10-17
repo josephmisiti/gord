@@ -38,9 +38,7 @@ uv sync
 # Copy the example environment file
 cp env.example .env
 
-# Edit .env and add your API keys
-# OPENAI_API_KEY=your-openai-api-key
-# BRAVE_APIKEY=your-brave-api-key
+Add your keys ... 
 ```
 
 ### Usage
